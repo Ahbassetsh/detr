@@ -23,11 +23,23 @@ class CocoDetection(torchvision.datasets.CocoDetection):
     def __getitem__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
         image_id = self.ids[idx]
+    
+        # 🔹 Remap category_id (COCO ids start at 1, DETR expects 0-based)
+        for ann in target:
+            ann['category_id'] = ann['category_id'] - 1
+    
+        # Build target dict
         target = {'image_id': image_id, 'annotations': target}
+    
+        # Prepare boxes, labels, area, iscrowd etc.
         img, target = self.prepare(img, target)
+    
+        # Apply transforms
         if self._transforms is not None:
             img, target = self._transforms(img, target)
+    
         return img, target
+
 
 
 def convert_coco_poly_to_mask(segmentations, height, width):
