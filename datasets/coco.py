@@ -64,17 +64,16 @@ class ConvertCocoPolysToMask(object):
         image_id = torch.tensor([image_id])
 
         anno = target["annotations"]
-
         anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
 
         boxes = [obj["bbox"] for obj in anno]
-        # guard against no boxes via resizing
         boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1, 4)
-        boxes[:, 2:] += boxes[:, :2]
+        boxes[:, 2:] += boxes[:, :2]  # Convert xywh -> xyxy
         boxes[:, 0::2].clamp_(min=0, max=w)
         boxes[:, 1::2].clamp_(min=0, max=h)
 
-        classes = [obj["category_id"] for obj in anno]
+        # ✅ Fix class indexing: subtract 1
+        classes = [obj["category_id"] - 1 for obj in anno]
         classes = torch.tensor(classes, dtype=torch.int64)
 
         if self.return_masks:
@@ -106,7 +105,7 @@ class ConvertCocoPolysToMask(object):
         if keypoints is not None:
             target["keypoints"] = keypoints
 
-        # for conversion to coco api
+        # Extra info
         area = torch.tensor([obj["area"] for obj in anno])
         iscrowd = torch.tensor([obj["iscrowd"] if "iscrowd" in obj else 0 for obj in anno])
         target["area"] = area[keep]
