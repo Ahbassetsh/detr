@@ -1,36 +1,34 @@
 import os
 from pathlib import Path
 import torch
-import torchvision
-from .coco import make_coco_transforms
-from .coco import CocoDetection
+from .coco import make_coco_transforms, CocoDetection
 from util.misc import nested_tensor_from_tensor_list
+
 
 class CocoDetectionWithSize(CocoDetection):
     def __getitem__(self, idx):
         img, target = super().__getitem__(idx)
 
-        # Get width & height from annotation (RoboFlow COCO export includes this)
+        # Image width/height
         if "width" in target and "height" in target:
             w, h = target["width"], target["height"]
         else:
-            w, h = img.size  # fallback
+            w, h = img.size  # fallback to PIL.Image size
 
         # Convert xywh → xyxy
-        anno = target["annotations"]
         boxes = []
         labels = []
-        for obj in anno:
-            if 'bbox' in obj:
+        for obj in target["annotations"]:
+            if "bbox" in obj:
                 x, y, bw, bh = obj["bbox"]
-                x2 = x + bw
-                y2 = y + bh
+                x2, y2 = x + bw, y + bh
                 boxes.append([x, y, x2, y2])
                 labels.append(obj["category_id"])
-        
+
+        # Convert to tensor
         if boxes:
             boxes = torch.as_tensor(boxes, dtype=torch.float32)
-            # Clamp to image size
+            # Clamp to image bounds
             boxes[:, 0::2].clamp_(0, w)
             boxes[:, 1::2].clamp_(0, h)
         else:
@@ -38,13 +36,19 @@ class CocoDetectionWithSize(CocoDetection):
 
         labels = torch.as_tensor(labels, dtype=torch.int64)
 
-        target_out = {
-            "boxes": boxes,
+        # Prepare target in DETR expected format
+        new_target = {
+            "boxes": boxes,                        # absolute coords
             "labels": labels,
-            "image_id": torch.tensor([target["image_id"]])
+            "image_id": torch.tensor([target["image_id"]]),
+            "size": torch.tensor([h, w])            # (H, W)
         }
 
-        return img, target_out
+        # Apply transforms (this step keeps colors correct & boxes in sync)
+        if self._transforms is not None:
+            img, new_target = self._transforms(img, new_target)
+
+        return img, new_target
 
 
 def build(image_set, args):
@@ -59,7 +63,8 @@ def build(image_set, args):
 
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetectionWithSize(
-        img_folder, ann_file, 
+        img_folder,
+        ann_file,
         transforms=make_coco_transforms(image_set),
         return_masks=args.masks
     )
