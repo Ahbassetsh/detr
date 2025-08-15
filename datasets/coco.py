@@ -1,28 +1,8 @@
 import os
 from pathlib import Path
 import torch
-from .coco import CocoDetection
+from .coco import make_coco_transform, CocoDetection
 from util.misc import nested_tensor_from_tensor_list
-
-import datasets.transforms as T
-
-def make_coco_transforms(image_set):
-    normalize = T.Compose([
-        T.ToTensor(),
-        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-    if image_set == 'train':
-        return T.Compose([
-            T.RandomResize([800], max_size=1333),
-            normalize,
-        ])
-
-    if image_set == 'val':
-        return T.Compose([
-            T.RandomResize([800], max_size=1333),
-            normalize,
-        ])
 
 class CocoDetectionWithSize(CocoDetection):
     def __getitem__(self, idx):
@@ -84,7 +64,7 @@ def build(image_set, args):
     dataset = CocoDetectionWithSize(
         img_folder,
         ann_file,
-        transforms=make_coco_transforms(image_set),
+        transforms=None,
         return_masks=args.masks
     )
     return dataset
