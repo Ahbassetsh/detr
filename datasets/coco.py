@@ -65,7 +65,7 @@ def build(image_set, args):
     dataset = CocoDetectionWithSize(
         img_folder,
         ann_file,
-        transforms=None,
+        transforms=make_coco_transform(image_set),
         return_masks=args.masks
     )
     return dataset
