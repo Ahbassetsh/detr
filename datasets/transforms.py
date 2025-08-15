@@ -53,7 +53,8 @@ def crop(image, target, region):
         for field in fields:
             target[field] = target[field][keep]
 
-    return cropped_image, target
+    #return cropped_image, target
+    return image, target
 
 
 def hflip(image, target):
@@ -70,7 +71,8 @@ def hflip(image, target):
     if "masks" in target:
         target['masks'] = target['masks'].flip(-1)
 
-    return flipped_image, target
+    #return flipped_image, target
+    return image, target
 
 
 def resize(image, target, size, max_size=None):
@@ -129,8 +131,8 @@ def resize(image, target, size, max_size=None):
         target['masks'] = interpolate(
             target['masks'][:, None].float(), size, mode="nearest")[:, 0] > 0.5
 
-    return rescaled_image, target
-
+    #return rescaled_image, target
+    return image, target
 
 def pad(image, target, padding):
     # assumes that we only pad on the bottom right corners
@@ -142,8 +144,8 @@ def pad(image, target, padding):
     target["size"] = torch.tensor(padded_image.size[::-1])
     if "masks" in target:
         target['masks'] = torch.nn.functional.pad(target['masks'], (0, padding[0], 0, padding[1]))
-    return padded_image, target
-
+    #return padded_image, target
+    return image, target
 
 class RandomCrop(object):
     def __init__(self, size):
